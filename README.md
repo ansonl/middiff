@@ -21,10 +21,10 @@ Build MIDDiff with `go build middiff.go mail.go`.
 The binary will be named _middiff_.
 
 ## Automate with a Cron job
-Edit the user crontab file<code>crontab -e</code>.<br/>
-Add the lines:<br/>
-* <code>
-MAILTO="user@usna.edu"</code><br/>
-*  <code>
+Edit the user crontab file `crontab -e`.  
+Add the lines:
+
+```
+MAILTO="user@usna.edu"
 0 0 * * * ./middiff/BINARYLOCATION -credentials=./CREDENTIALSLOCATION
-</code>
+```
