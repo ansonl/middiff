@@ -3,14 +3,14 @@
 
 ## Prerequesites
 Install Golang environment if you do not have it installed already<br/>
-<code>
+```
 git clone https://go.googlesource.com/go  
 cd go  
 git checkout go1.4.2  
 cd src  
 ./all.bash  
 export $PATH=$PATH:$HOME/go/bin
-</code>
+```
 
 ## Clone the code
 In the directory you want the middiff folder, run<code>git clone https://github.com/anson/middiff</code>. 
