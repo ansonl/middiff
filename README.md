@@ -4,11 +4,11 @@
 ## Prerequesites
 Install Golang environment if you do not have it installed already<br/>
 <code>
-git clone https://go.googlesource.com/go<br/>
-cd go<br/>
-git checkout go1.4.2<br/>
-cd src<br/>
-./all.bash<br/>
+git clone https://go.googlesource.com/go  
+cd go  
+git checkout go1.4.2  
+cd src  
+./all.bash  
 export $PATH=$PATH:$HOME/go/bin
 </code>
 
