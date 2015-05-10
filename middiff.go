@@ -14,7 +14,13 @@ import (
 "flag"
 "encoding/binary"
 "bytes"
+"strings"
 )
+
+type URLInfo struct {
+	Description string
+	Path string
+}
 
 type SummerSchedule struct {
 	Headers []string
@@ -41,15 +47,17 @@ func (s SummerSchedule) MarshalBinary() (data []byte, err error) {
 
 var username string
 var password string
+var url string
 var localFilename string
 var credentials string
-
-var summerScheduleURL = "https://mids.usna.edu/ITSD/mids/dstwq001$.startup"
+var address string
 
 func init() {
-	flag.StringVar(&username, "username", "", "Username")
-	flag.StringVar(&password, "password", "", "Password")
-	flag.StringVar(&credentials, "credentials", "", "OPTIONAL: Local file with credentials")
+	flag.StringVar(&username, "username", "", "ONE OFF: Username")
+	flag.StringVar(&password, "password", "", "ONE OFF: Password")
+	flag.StringVar(&url, "url", "", "ONE OFF: URL to check on one off run.")
+	flag.StringVar(&credentials, "credentials", "", "OPTIONAL: Local file with credentials. FORMAT: Username, newline, password, newline ...")
+	flag.StringVar(&address, "urllist", "", "REQUIRED if using credential file: Local file with URLs to check. FORMAT: URL Description, newline, URL, newline ...")
 	flag.StringVar(&localFilename, "local", "", "OPTIONAL: Local file to parse")
 }
 
@@ -66,10 +74,10 @@ func main() {
 	if (localFilename != "") {
 		loadFile(localFilename)
 	} else if (credentials != "") {
-		loadCredentials(credentials)
+		loadCredentials(address, credentials)
 	} else {
 		//load url content
-		loadURL(summerScheduleURL, username, password)
+		loadURL(URLInfo{Description: "One off command", Path: url}, username, password)
 	}  
 }
 
@@ -83,30 +91,55 @@ func loadFile(filename string) {
 	fmt.Println(doc)
 }
 
-func loadCredentials(filename string) {
-	f, err := os.Open(filename)
+func loadCredentials(addressFilename string, credentialFilename string) {
+	f, err := os.Open(addressFilename)
 	check(err)
 
 	r := bufio.NewReader(f)
 
+	urlList := make([]URLInfo, 0)
+
+	//Expect url desc and url path with newline inbetween 
+	desc := ""
+	path := ""
+	for line, err := r.ReadString(10);  err == nil; line, err = r.ReadString(10) {
+		if desc == "" {
+			desc = line
+		} else {
+			path = line
+			urlItem := URLInfo{Description: desc[0:len(desc) - 1], Path: path[0:len(path) -1]}
+			urlList = append(urlList, urlItem)
+			desc = ""
+		}
+	}
+
+	f, err = os.Open(credentialFilename)
+	check(err)
+
+	r = bufio.NewReader(f)
+
 	//Expect username and password with newline inbetween 
-	username = ""
-	password = ""
+	username := ""
+	password := ""
 	for line, err := r.ReadString(10);  err == nil; line, err = r.ReadString(10) {
 		if username == "" {
 			username = line
 		} else {
 			password = line
 			//fmt.Printf("%v:%v", username[0:len(username) - 1], password[0:len(password) - 1])
-			loadURL(summerScheduleURL, username[0:len(username) - 1], password[0:len(password) - 1])
+
+			for _, urlItem := range urlList {
+				loadURL(urlItem, username[0:len(username) - 1], password[0:len(password) - 1])
+			}
+			
 			username = ""
 		}
 	}
 	check(err)
 }
 
-func loadURL(url string, username, password string) {
-	doc,err := html.Parse(fetch(url, username, password))
+func loadURL(urlItem URLInfo, username, password string) {
+	doc,err := html.Parse(fetch(urlItem.Path, username, password))
 	check(err)
 
 	var theSchedule SummerSchedule
@@ -134,35 +167,37 @@ func loadURL(url string, username, password string) {
 	err = os.Chdir(os.Getenv("HOME"))
 	check(err)
 
-	_, err = os.Stat(username);
+	saveFilename := strings.Replace(username + "-" + urlItem.Description, " ", "", -1)
+
+	_, err = os.Stat(saveFilename);
 	if err == nil {
-		existingData, err := ioutil.ReadFile(username)
+		existingData, err := ioutil.ReadFile(saveFilename)
 		check(err)
 
 		if bytes.Equal(aggregateBuf.Bytes(), existingData) == false {
 			fmt.Println("Schedule for changed for " + username)
 
 			//write changes to file
-			f, err := os.Create(username)
+			f, err := os.Create(saveFilename)
 			check(err)
 
 			_, err = f.Write(aggregateBuf.Bytes())
 			check(err)
 
 			//in mail.go
-			mail(username + "@usna.edu", "MidDiff@lab.server", "MIDS Summer Schedule Changed", "View at: https://mids.usna.edu/ITSD/mids/dstwq001$.startup")
+			//mail(username + "@usna.edu", "m163876@mich302csd17u.academy.usna.edu", "MIDS " + urlItem.Description + " Changed", "View " + urlItem.Description + " at: " + urlItem.Path)
 		} else {
 			//fmt.Println("no changes")
 		}
 	} else if os.IsNotExist(err) {
 		//write changes to file
-		f, err := os.Create(username)
+		f, err := os.Create(saveFilename)
 		check(err)
 
 		_, err = f.Write(aggregateBuf.Bytes())
 		check(err)
 
-		fmt.Println("Made new save file at " + os.Getenv("HOME") + "/" + username)
+		fmt.Println("Made new save file at " + os.Getenv("HOME") + "/" + saveFilename)
 	}
 }
 
