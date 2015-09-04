@@ -1,5 +1,6 @@
 # MIDDiff
 ### Know when your summer assignment has changed
+*This tool may not work due to the database system switching from HTTP Authentication to SAML*
 
 ## Prerequisites
 Install Golang environment if you do not have it installed already<br/>
